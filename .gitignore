@@ -1,0 +1,20 @@
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+MemoryCaptures/
+UserSettings/
+
+# OS-specific
+.DS_Store
+*.swp
+*.tmp
+
+# VS/JetBrains
+.vscode/
+*.csproj
+*.sln
+*.user
+.idea/
