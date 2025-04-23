@@ -1,6 +1,7 @@
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.AI;
+using System.Collections;
 
 [RequireComponent(typeof(NavMeshAgent))]
 public class Enemy : NetworkBehaviour
@@ -64,12 +65,64 @@ public class Enemy : NetworkBehaviour
         {
             Die();
         }
+        else
+        {
+            StartCoroutine(HitFeedback());
+            HitFeedbackClientRpc();
+        }
     }
+    [ClientRpc]
+    private void HitFeedbackClientRpc()
+    {
+        if (IsServer) return;
+        StartCoroutine(HitFeedback());
+    }
+
+    private IEnumerator HitFeedback()
+    {
+        // Get all renderers in child objects
+        Renderer[] renderers = GetComponentsInChildren<Renderer>();
+        if (renderers.Length == 0) yield break;
+
+        // Store original colors
+        Color[] originalColors = new Color[renderers.Length];
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            originalColors[i] = renderers[i].material.color;
+            renderers[i].material.color = Color.red;
+        }
+
+        // Freeze movement
+        bool wasMoving = agent.enabled;
+        if (wasMoving && agent.isActiveAndEnabled && agent.isOnNavMesh)
+        {
+            agent.isStopped = true;
+        }
+
+        yield return new WaitForSeconds(0.2f);
+
+        // Restore original colors
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            renderers[i].material.color = originalColors[i];
+        }
+
+        if (wasMoving && agent.isActiveAndEnabled && agent.isOnNavMesh)
+        {
+            agent.isStopped = false;
+        }
+    }
+
+
 
     private void Die()
     {
         isDead = true;
-        agent.ResetPath();
+        if (agent.isActiveAndEnabled && agent.isOnNavMesh)
+        {
+            agent.ResetPath();
+        }
+
         PlayDieAnimation();
         // Despawn after 3 seconds
         Invoke(nameof(Despawn), 3f);
@@ -97,7 +150,10 @@ public class Enemy : NetworkBehaviour
         {
             if (distance > attackRange && agent.destination != target.position)
             {
-                agent.SetDestination(target.position);
+                if (agent.isActiveAndEnabled && agent.isOnNavMesh)
+                {
+                    agent.SetDestination(target.position);
+                }
             }
             lastRepathTime = Time.time;
         }
